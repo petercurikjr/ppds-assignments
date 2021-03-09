@@ -1,3 +1,8 @@
+"""
+MENO: PETER CURIK
+ÚLOHA: PRODUCENT-KONZUMENT
+"""
+
 from fei.ppds import Mutex, Semaphore, Thread
 from time import sleep
 from random import randint
