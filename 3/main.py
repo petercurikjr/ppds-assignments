@@ -74,25 +74,18 @@ def producer_consumer_experiment():
                 free = Semaphore(10)
                 shared = Shared()
                 divider = 250
-                consumers = [
-                    Thread(consumer, items, free, shared,
-                           lambda: randint(0, 10) / divider)
-                    for x in range(n_consumers)
-                ]
-                producers = [
-                    Thread(producer, items, free, shared,
-                           lambda: time_to_produce / divider) for x in range(10)
-                ]
+                [Thread(consumer, items, free, shared, lambda: randint(0, 10) / divider) for x in range(n_consumers)]
+                [Thread(producer, items, free, shared, lambda: time_to_produce / divider) for x in range(10)]
                 sleep_time = 0.05
                 sleep(sleep_time)
                 shared.finished = True
                 items.signal(100)
                 free.signal(100)
-                [x.join() for x in consumers + producers]
 
                 n_produced_items = shared.counter
                 items_per_second = n_produced_items / sleep_time
                 items_per_second_sum += items_per_second
+
             average_items_per_second = items_per_second_sum / n_repetitions
             results.append((time_to_produce / divider, n_consumers, average_items_per_second))
             done += 1
