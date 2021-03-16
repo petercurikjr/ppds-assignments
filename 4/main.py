@@ -42,10 +42,14 @@ def monitor(monitor_id, valid_data, turniket, ls_monitor, access_data):
     valid_data.wait()
 
     while True:
+        # nepretrzite citanie, ziadny sleep na zac. while cyklu
+
         turniket.wait()
         turniket.signal()
 
         pocet_citajucich_monitorov = ls_monitor.lock(access_data)
+        
+        # trvanie citania
         trvanie_zapisu = randint(40,50)/1000
 
         print(f'monit "{monitor_id:02d}": '
@@ -58,14 +62,17 @@ def monitor(monitor_id, valid_data, turniket, ls_monitor, access_data):
 
 def cidlo(cidlo_id, turniket, ls_cidlo, valid_data, access_data):
     while True:
+        # pauza medzi aktualizaciami
         sleep(randint(50,60)/1000)
 
         turniket.wait()
         pocet_zapisujucich_cidiel = ls_cidlo.lock(access_data)
 
         if cidlo_id == 2:
+            # trvanie samotnej aktualizacie ak ide o cidlo H
             trvanie_zapisu = randint(20,25)/1000
         else:
+            # inak
             trvanie_zapisu = randint(10,20)/1000
         turniket.signal()
 
@@ -74,7 +81,10 @@ def cidlo(cidlo_id, turniket, ls_cidlo, valid_data, access_data):
               f'trvanie_zapisu={trvanie_zapisu:5.3f}')
         sleep(trvanie_zapisu)
 
+        # cidla su vypustene az ked sem pride posledne cidlo
         ls_cidlo.unlock(access_data)
+
+        # signal o dokonceni prace posledneho cidla musi byt az tu
         valid_data.signal()
 
 
