@@ -48,15 +48,15 @@ def monitor(monitor_id, valid_data, turniket, ls_monitor, access_data):
         turniket.signal()
 
         pocet_citajucich_monitorov = ls_monitor.lock(access_data)
-        
+
         # trvanie citania
-        trvanie_zapisu = randint(40,50)/1000
+        trvanie_citania = randint(40,50)/1000
 
         print(f'monit "{monitor_id:02d}": '
               f'pocet_citajucich_monitorov={pocet_citajucich_monitorov:02d} '
-              f'trvanie_citania={trvanie_zapisu:5.3f}')
+              f'trvanie_citania={trvanie_citania:5.3f}')
 
-        sleep(trvanie_zapisu)
+        sleep(trvanie_citania)
         ls_monitor.unlock(access_data)
 
 
