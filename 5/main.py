@@ -1,8 +1,9 @@
 """Riesenie modifikovaneho problemu divochov."""
 
-from fei.ppds import Semaphore, Mutex, Thread, print
+from fei.ppds import Semaphore, Mutex, Thread, print, Event
 from random import randint
 from time import sleep
+import math
 
 
 """M a N su parametre modelu, nie synchronizacie ako takej.
@@ -10,8 +11,9 @@ Preto ich nedavame do zdielaneho objektu.
     M - pocet porcii misionara, ktore sa zmestia do hrnca.
     N - pocet divochov v kmeni (kuchara nepocitame).
 """
-M = 2
-N = 3
+M = 20
+N = 4
+C = 3
 
 
 class SimpleBarrier:
@@ -19,8 +21,8 @@ class SimpleBarrier:
     kvoli specialnym vypisom vo funkcii wait().
     """
 
-    def __init__(self, N):
-        self.N = N
+    def __init__(self, size):
+        self.size = size
         self.mutex = Mutex()
         self.cnt = 0
         self.sem = Semaphore(0)
@@ -34,11 +36,11 @@ class SimpleBarrier:
         self.cnt += 1
         if print_each_thread:
             print(print_str % (savage_id, self.cnt))
-        if self.cnt == self.N:
+        if self.cnt == self.size:
             self.cnt = 0
             if print_last_thread:
                 print(print_str % (savage_id))
-            self.sem.signal(self.N)
+            self.sem.signal(self.size)
         self.mutex.unlock()
         self.sem.wait()
 
@@ -54,11 +56,16 @@ class Shared:
 
     def __init__(self):
         self.mutex = Mutex()
+        self.mutex_cook = Mutex()
         self.servings = 0
-        self.full_pot = Semaphore(0)
-        self.empty_pot = Semaphore(0)
+
+        self.start_eating = Semaphore(0)
+        self.start_cooking = Event()
+        self.did_announce = False
+
         self.barrier1 = SimpleBarrier(N)
         self.barrier2 = SimpleBarrier(N)
+        self.barrier_cooks = SimpleBarrier(C)
 
 
 def get_serving_from_pot(savage_id, shared):
@@ -73,6 +80,14 @@ def eat(savage_id):
 
 
 def savage(savage_id, shared):
+    shared.barrier1.wait(
+        "divoch %2d: prisiel som na veceru, uz nas je %2d",
+        savage_id,
+        print_each_thread=True)
+    shared.barrier2.wait("divoch %2d: uz sme vsetci, zaciname vecerat",
+                         savage_id,
+                         print_last_thread=True)
+
     while True:
         """Pred kazdou hostinou sa divosi musia pockat.
         Kedze mame kod vlakna (divocha) v cykle, musime pouzit dve
@@ -80,41 +95,32 @@ def savage(savage_id, shared):
         prehladnosti vypisov sme sa rozhodli pre toto riesenie.
         """
 
-        shared.barrier1.wait(
-            "divoch %2d: prisiel som na veceru, uz nas je %2d",
-            savage_id,
-            print_each_thread=True)
-        shared.barrier2.wait("divoch %2d: uz sme vsetci, zaciname vecerat",
-                             savage_id,
-                             print_last_thread=True)
-
         # Nasleduje klasicke riesenie problemu hodujucich divochov.
         shared.mutex.lock()
         print("divoch %2d: pocet zostavajucich porcii v hrnci je %2d" %
               (savage_id, shared.servings))
         if shared.servings == 0:
-            print("divoch %2d: budim kuchara" % savage_id)
-            shared.empty_pot.signal()
-            shared.full_pot.wait()
+            print("divoch %2d: budim kucharov" % savage_id)
+            shared.start_cooking.signal()
+            shared.start_eating.wait()
         get_serving_from_pot(savage_id, shared)
         shared.mutex.unlock()
 
         eat(savage_id)
 
 
-def put_servings_in_pot(M, shared):
+def put_servings_in_pot(shared, t, cook_id):
     """M je pocet porcii, ktore vklada kuchar do hrnca.
     Hrniec je reprezentovany zdielanou premennou servings.
     Ta udrziava informaciu o tom, kolko porcii je v hrnci k dispozicii.
     """
 
-    print("kuchar: varim")
+    print("kuchar %2d: varim" % cook_id)
     # navarenie jedla tiez cosi trva...
-    sleep(0.4 + randint(0, 2) / 10)
-    shared.servings += M
+    sleep(t if t >= 0.5 else 0.5)
 
 
-def cook(M, shared):
+def cook(shared, cook_id):
     """Na strane kuchara netreba robit ziadne modifikacie kodu.
     Riesenie je standardne podla prednasky.
     Navyse je iba argument M, ktorym explicitne hovorime, kolko porcii
@@ -122,24 +128,43 @@ def cook(M, shared):
     Kedze v nasom modeli mame iba jedneho kuchara, ten navari vsetky
     potrebne porcie a vlozi ich do hrnca.
     """
+    worst_time = 8
+    log_multiplier = 2
+    efficiency = math.log(C)*log_multiplier
+    t = randint(worst_time-2, worst_time) - efficiency
 
     while True:
-        shared.empty_pot.wait()
-        put_servings_in_pot(M, shared)
-        shared.full_pot.signal()
+        shared.start_cooking.wait()
+        shared.did_announce = False
+        put_servings_in_pot(shared, t, cook_id)
+
+        shared.barrier_cooks.wait("kuchar %2d: dovarili vsetci kuchari", cook_id, print_last_thread=True)
+
+        shared.mutex_cook.lock()
+        if not shared.did_announce:
+            shared.servings = M
+
+            shared.start_eating.signal()
+            shared.did_announce = True
+            shared.start_cooking.clear()
+        shared.mutex_cook.unlock()
 
 
-def init_and_run(N, M):
+def init_and_run():
     """Spustenie modelu"""
-    threads = list()
+    savages_threads = list()
+    cooks_threads = list()
+
     shared = Shared()
     for savage_id in range(0, N):
-        threads.append(Thread(savage, savage_id, shared))
-    threads.append(Thread(cook, M, shared))
+        savages_threads.append(Thread(savage, savage_id, shared))
 
-    for t in threads:
+    for cook_id in range(0, C):
+        cooks_threads.append(Thread(cook, shared, cook_id))
+
+    for t in savages_threads + cooks_threads:
         t.join()
 
 
 if __name__ == "__main__":
-    init_and_run(N, M)
+    init_and_run()
