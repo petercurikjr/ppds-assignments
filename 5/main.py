@@ -1,5 +1,3 @@
-"""Riesenie modifikovaneho problemu divochov."""
-
 from fei.ppds import Semaphore, Mutex, Thread, print, Event
 from random import randint
 from time import sleep
@@ -17,10 +15,6 @@ C = 3
 
 
 class SimpleBarrier:
-    """Vlastna implementacia bariery
-    kvoli specialnym vypisom vo funkcii wait().
-    """
-
     def __init__(self, size):
         self.size = size
         self.mutex = Mutex()
@@ -46,14 +40,6 @@ class SimpleBarrier:
 
 
 class Shared:
-    """V tomto pripade musime pouzit zdielanu strukturu.
-    Kedze Python struktury nema, pouzijeme triedu bez vlastnych metod.
-    Preco musime pouzit strukturu? Lebo chceme zdielat hodnotu
-    pocitadla servings, a to jednoduchsie v Pythone asi neurobime.
-    Okrem toho je rozumne mat vsetky synchronizacne objekty spolu.
-    Pri zmene nemusime upravovat API kazdej funkcie zvlast.
-    """
-
     def __init__(self):
         self.mutex = Mutex()
         self.mutex_cook = Mutex()
@@ -80,6 +66,7 @@ def eat(savage_id):
 
 
 def savage(savage_id, shared):
+    # stretnu a pockaju sa iba pred zacatim "party", toto nemusi byt vo while
     shared.barrier1.wait(
         "divoch %2d: prisiel som na veceru, uz nas je %2d",
         savage_id,
@@ -89,19 +76,16 @@ def savage(savage_id, shared):
                          print_last_thread=True)
 
     while True:
-        """Pred kazdou hostinou sa divosi musia pockat.
-        Kedze mame kod vlakna (divocha) v cykle, musime pouzit dve
-        jednoduche bariery za sebou alebo jednu zlozenu, ale kvoli
-        prehladnosti vypisov sme sa rozhodli pre toto riesenie.
-        """
-
-        # Nasleduje klasicke riesenie problemu hodujucich divochov.
         shared.mutex.lock()
         print("divoch %2d: pocet zostavajucich porcii v hrnci je %2d" %
               (savage_id, shared.servings))
+
+        # divosi idu po jednom a kontroluju stav hrnca
         if shared.servings == 0:
             print("divoch %2d: budim kucharov" % savage_id)
+            # nastava udalost pre kucharov
             shared.start_cooking.signal()
+            # divoch sa pozastavi a tym aj cela fronta za nim co caka pred KO
             shared.start_eating.wait()
         get_serving_from_pot(savage_id, shared)
         shared.mutex.unlock()
@@ -110,36 +94,34 @@ def savage(savage_id, shared):
 
 
 def put_servings_in_pot(shared, t, cook_id):
-    """M je pocet porcii, ktore vklada kuchar do hrnca.
-    Hrniec je reprezentovany zdielanou premennou servings.
-    Ta udrziava informaciu o tom, kolko porcii je v hrnci k dispozicii.
     """
-
+    nejake minimum to bude vzdy trvat (0.5), mozeme si pod tym predstavit
+    napr zovretie vody na 100 stupnov, cas kym sa uvari samotne maso...
+    tieto veci nevie zrychlit hocikolko n kucharov
+    """
     print("kuchar %2d: varim" % cook_id)
-    # navarenie jedla tiez cosi trva...
     sleep(t if t >= 0.5 else 0.5)
 
 
 def cook(shared, cook_id):
-    """Na strane kuchara netreba robit ziadne modifikacie kodu.
-    Riesenie je standardne podla prednasky.
-    Navyse je iba argument M, ktorym explicitne hovorime, kolko porcii
-    ktory kuchar vari.
-    Kedze v nasom modeli mame iba jedneho kuchara, ten navari vsetky
-    potrebne porcie a vlozi ich do hrnca.
-    """
+    # cim viac kucharov, tym rychlejsi cely tim
+    # vztah je vyjadreny logaritmickou funkciou
     worst_time = 8
     log_multiplier = 2
     efficiency = math.log(C)*log_multiplier
     t = randint(worst_time-2, worst_time) - efficiency
 
     while True:
+        # cakaju na udalost
         shared.start_cooking.wait()
         shared.did_announce = False
         put_servings_in_pot(shared, t, cook_id)
 
+        # pockaju sa kym vsetci dokoncia svoje ulohy
         shared.barrier_cooks.wait("kuchar %2d: dovarili vsetci kuchari", cook_id, print_last_thread=True)
 
+        # po jednom vstupuju do KO a prvy z kucharov pusti divochov
+        # nasledne vsetky vlakna sa dostanu na zaciatok while cyklu kde opat cakaju
         shared.mutex_cook.lock()
         if not shared.did_announce:
             shared.servings = M
@@ -151,7 +133,6 @@ def cook(shared, cook_id):
 
 
 def init_and_run():
-    """Spustenie modelu"""
     savages_threads = list()
     cooks_threads = list()
 
