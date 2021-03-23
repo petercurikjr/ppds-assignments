@@ -7,7 +7,8 @@ import math
 """M a N su parametre modelu, nie synchronizacie ako takej.
 Preto ich nedavame do zdielaneho objektu.
     M - pocet porcii misionara, ktore sa zmestia do hrnca.
-    N - pocet divochov v kmeni (kuchara nepocitame).
+    N - pocet divochov v kmeni
+    C - pocet kucharov, ktori varia divochom
 """
 M = 20
 N = 4
