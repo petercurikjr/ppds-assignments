@@ -86,10 +86,14 @@ def customer_func(customer_id, shared):
         shared.counter.incoming_customer(customer_id)
 
         if customer_id not in shared.counter.queue:
+            # zakaznici, ktori nie su v cakarni nemozu vstupit do KO
             continue
 
+        # KO: iba JEDEN zakaznik moze ist k barberovi
         shared.customer_at_barber.lock()
         shared.customer_id_at_barber = customer_id
+
+        # rendezvous s barberom: pockaju sa aby zacali naraz
         shared.customer.signal()
         shared.barber.wait()
 
