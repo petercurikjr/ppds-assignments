@@ -31,14 +31,15 @@ class Counter:
         self.queue = []
 
     def incoming_customer(self, customer_id):
-        self.mutex.lock()
         if self.waiting_customers == self.waiting_room_capacity:
             print("zakaznik %2d: odchadzam. je tu plno" % customer_id)
+
         else:
+            self.mutex.lock()
             print("zakaznik %2d: prisiel som. cakam v cakarni" % customer_id)
             self.queue.append(customer_id)
             self.waiting_customers += 1
-        self.mutex.unlock()
+            self.mutex.unlock()
 
     def outcoming_customer(self, customer_id):
         self.mutex.lock()
@@ -95,7 +96,6 @@ def customer_func(customer_id, shared):
         print("zakaznik %2d: striha ma barber" % customer_id)
         sleep(randint(1, 5) / 10)
 
-        shared.customer_at_barber_ready.clear()
         shared.customer_done.signal()
         print("zakaznik %2d: uz ma nestrihaj staci" % customer_id)
         shared.barber_done.wait()
