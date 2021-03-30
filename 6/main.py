@@ -1,6 +1,6 @@
 # VYBRAL SOM SI PROBLEM: HOLICSTVO BEZ PREDBIEHANIA
 
-from fei.ppds import Thread, Mutex, Semaphore, Event
+from fei.ppds import Thread, Mutex, Semaphore
 from time import sleep
 from random import randint
 
@@ -65,20 +65,12 @@ class Shared:
     customer_at_barber: mutex na izolaciu obsluhovanych zakaznikov.
         potrebujeme docielit aby barber strihal iba jedneho
         zakaznika v jednom case --> pouzitie mutexu
-
-    customer_at_barber_ready: povolenie barberovi zacat pracu.
-        ked je uz dany zakaznik sam v miestnosti s barberom
-        (rendezvous vykonany), barber caka na zvolenie ku startu.
-        toto tu je iba kvoli prehladnosti vypisov.
-        aby sme videli spravne id zakaznika (customer_id_at_barber),
-        ktoreho barber prave striha
     """
 
     def __init__(self):
         self.customer = Semaphore(0)
         self.customer_done = Semaphore(0)
         self.customer_at_barber = Mutex()
-        self.customer_at_barber_ready = Event()
 
         self.barber = Semaphore(0)
         self.barber_done = Semaphore(0)
@@ -96,11 +88,10 @@ def customer_func(customer_id, shared):
             continue
 
         shared.customer_at_barber.lock()
+        shared.customer_id_at_barber = customer_id
         shared.customer.signal()
         shared.barber.wait()
 
-        shared.customer_id_at_barber = customer_id
-        shared.customer_at_barber_ready.signal()
         print("zakaznik %2d: striha ma barber" % customer_id)
         sleep(randint(1, 5) / 10)
 
@@ -118,7 +109,6 @@ def barber_func(shared):
         shared.customer.wait()
         shared.barber.signal()
 
-        shared.customer_at_barber_ready.wait()
         print("barber: striham zakaznika %2d" % shared.customer_id_at_barber)
         sleep(randint(1, 5) / 10)
 
