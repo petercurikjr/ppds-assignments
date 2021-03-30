@@ -10,6 +10,7 @@ class Counter:
         self.waiting_customers = 0
         self.waiting_room_capacity = 5
         self.mutex = Mutex()
+        self.queue = []
 
     def incoming_customer(self, customer_id):
         self.mutex.lock()
@@ -17,6 +18,7 @@ class Counter:
             print("zakaznik %2d: odchadzam. je tu plno" % customer_id)
         else:
             print("zakaznik %2d: prisiel som. cakam v cakarni" % customer_id)
+            self.queue.append(customer_id)
             self.waiting_customers += 1
         self.mutex.unlock()
 
@@ -24,6 +26,7 @@ class Counter:
         self.mutex.lock()
         print("zakaznik %2d: odchadzam z holicstva" % customer_id)
         self.waiting_customers -= 1
+        self.queue.pop(0)
         self.mutex.unlock()
 
 
@@ -43,8 +46,11 @@ class Shared:
 
 def customer_func(customer_id, shared):
     while True:
-        sleep(randint(0, 1) / 10)
+        sleep(randint(1, 2))
         shared.counter.incoming_customer(customer_id)
+
+        if customer_id not in shared.counter.queue:
+            continue
 
         shared.customer_at_barber.lock()
         shared.customer.signal()
@@ -75,7 +81,7 @@ def barber_func(shared):
 
         shared.customer_done.wait()
         shared.barber_done.signal()
-        print("barber: dovidenia zakaznik %2d" % shared.customer_id_at_barber)
+        print("barber: na ziadost zakaznika %2d koncim" % shared.customer_id_at_barber)
 
 
 def main():
