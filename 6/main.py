@@ -1,11 +1,29 @@
+# VYBRAL SOM SI PROBLEM: HOLICSTVO BEZ PREDBIEHANIA
+
 from fei.ppds import Thread, Mutex, Semaphore, Event
 from time import sleep
 from random import randint
 
+# pocet zakaznikov
 N = 10
 
 
 class Counter:
+    """
+    manazment cakajucich zakaznikov.
+
+    premenne:
+    waiting_room_capacity: velkost cakarne.
+        defaultne pre 10 zakaznikov je vyhradena miestnost s kapacitou 5.
+        takze niektori zakaznici odidu z holicstva hned ako pridu.
+    queue: evidencia idcok vlakien, ktore su v cakarni.
+    waiting_customers: na kolko je naplnena cakaren.
+
+    metody:
+    incoming_customer: pridava do cakarne
+    outcoming_customer: odobera z cakarne
+    """
+
     def __init__(self):
         self.waiting_customers = 0
         self.waiting_room_capacity = 5
@@ -31,6 +49,31 @@ class Counter:
 
 
 class Shared:
+    """
+    zdielanie spolocnych dat napriec vlaknami.
+
+    customer, barber: semafory na ucel rendezvous.
+        chceme aby zakaznik, ktory je na rade, pockal na barbera
+        kym dokonci zakaznika pred nim
+        a taktiez aby barber ak nema pracu pockal na zakaznika
+
+    customer_done, barber_done: semafory na ucel rendezvous.
+        chceme aby zakaznik, ktory je prave obsluhovany
+        vedel povedat kedy mu uz staci
+        a taktiez aby pockal na barbera kym ukonci doteraz vykonanu pracu
+
+    customer_at_barber: mutex na izolaciu obsluhovanych zakaznikov.
+        potrebujeme docielit aby barber strihal iba jedneho
+        zakaznika v jednom case --> pouzitie mutexu
+
+    customer_at_barber_ready: povolenie barberovi zacat pracu.
+        ked je uz dany zakaznik sam v miestnosti s barberom
+        (rendezvous vykonany), barber caka na zvolenie ku startu.
+        toto tu je iba kvoli prehladnosti vypisov.
+        aby sme videli spravne id zakaznika (customer_id_at_barber),
+        ktoreho barber prave striha
+    """
+
     def __init__(self):
         self.customer = Semaphore(0)
         self.customer_done = Semaphore(0)
