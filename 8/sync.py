@@ -20,7 +20,6 @@ def print_data(json_data, city):
 
 if __name__ == '__main__':
     import time
-    start = time.time()
 
     inp = '_'
     arr = []
@@ -28,8 +27,8 @@ if __name__ == '__main__':
         inp = input('Enter a list of capital city names of your choice: ')
         arr.append(inp)
 
+    start = time.time()
     for city_input in arr:
         get_data(city_input)
-
     end = time.time()
     print('Time elapsed:', end - start)
