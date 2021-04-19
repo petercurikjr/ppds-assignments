@@ -15,6 +15,8 @@ def print_data(json_data, city):
     print('\n------------------------------')
     print('Here is the information about ' + city + ':')
     print('Country:', json_data['name'])
+    print('Borders:', json_data['borders'])
+    print('Population:', json_data['population'])
     print('------------------------------')
 
 
