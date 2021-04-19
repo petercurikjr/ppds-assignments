@@ -21,9 +21,14 @@ def print_data(json_data, city):
 if __name__ == '__main__':
     import time
 
+    # arr = []
+    arr = [
+        'bratislava', 'prague', 'stockholm', 'tokyo', 'budapest', 'berlin',
+        'vienna', 'canberra', 'moscow', 'minsk', 'ottawa', 'dublin'
+    ]
+
     inp = '_'
-    arr = []
-    while inp != '':
+    while inp != '' and len(arr) == 0:
         inp = input('Enter a list of capital city names of your choice: ')
         arr.append(inp)
 
