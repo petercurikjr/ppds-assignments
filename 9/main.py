@@ -15,14 +15,17 @@ def normalize(data, data_to_normalize):
 def main():
     data = numpy.random.uniform(10, 1000, 128)
     data_to_normalize = copy.deepcopy(data)
-    print(data)
+    print('------------------------------------------------------------------')
+    print('Input data:', data)
 
     threads_per_block = 128
     blocks_per_grid = math.ceil(data.shape[0] / threads_per_block)
+    print('------------------------------------------------------------------')
+    print('Input_array_length / Threads_per_block = Blocks_per_grid')
     print(len(data), '/', threads_per_block, '=', math.ceil(data.shape[0] / threads_per_block))
-
+    print('------------------------------------------------------------------')
     normalize[blocks_per_grid, threads_per_block](data, data_to_normalize)
-    print(data_to_normalize)
+    print('Normalized data:', data_to_normalize)
 
 
 if __name__ == '__main__':
