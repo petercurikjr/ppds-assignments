@@ -29,7 +29,7 @@ def normalize(data, data_to_normalize):
 
     # kontrola, ktora znemozni nadbytocnym threadom pracovat s prvkami mimo rozsahu pola
     if pos < data.size:
-        data_to_normalize[pos] = (data[pos] - min(data))/(max(data) - min(data))
+        data_to_normalize[pos] = (data[pos] - min(data)) / (max(data) - min(data))
 
 
 def main():
